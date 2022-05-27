@@ -18,6 +18,9 @@ impl Board {
         if start > 11 {
             return false;
         }
+        if !self.check_move_legal(start) {
+            return false;
+        }
         let mut index = match self.current_player {
             0 => start,
             _ => start + 6,
@@ -51,6 +54,27 @@ impl Board {
         self.current_player %= 2;
     }
 
+    fn check_move_legal(&self, start: usize) -> bool {
+        let enemy_index = match self.current_player {
+            0 => 6,
+            _ => 0,
+        };
+
+        for i in 0..6 {
+            if self.field[i + enemy_index] > 0 {
+                return true;
+            }
+        }
+        if (self.field[start] + start as u8)
+            > match self.current_player {
+                0 => 5,
+                _ => 0,
+            }
+        {
+            return true;
+        }
+        false
+    }
     fn score(&mut self, end: usize) {
         if (self.current_player == 0 && end < 6) || (self.current_player == 1 && end > 5) {
             return;
