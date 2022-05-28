@@ -3,6 +3,7 @@ pub struct Board {
     field: [u8; 12],
     current_player: usize,
     score: [u8; 2],
+    game_running: bool,
 }
 
 impl Board {
@@ -11,6 +12,7 @@ impl Board {
             field: [4; 12],
             current_player: 0,
             score: [0; 2],
+            game_running: true,
         }
     }
 
@@ -50,11 +52,34 @@ impl Board {
     }
 
     fn set_next_player(&mut self) {
+        if self.score[0] > 12 || self.score[1] > 12 {
+            self.game_running = false;
+            return;
+        }
         self.current_player += 1;
         self.current_player %= 2;
+        let start = match self.current_player {
+            0 => 6,
+            _ => 0,
+        };
+        for i in 0..6 {
+            if self.field[i + start] > 0 {
+                return;
+            }
+        }
+        self.game_running = false;
+        for i in 0..11 {
+            self.score[match i {
+                0..=5 => 0,
+                _ => 1,
+            }] += self.field[i];
+        }
     }
 
     fn check_move_legal(&self, start: usize) -> bool {
+        if self.field[start] == 0 {
+            return false;
+        }
         let enemy_index = match self.current_player {
             0 => 6,
             _ => 0,
@@ -62,7 +87,7 @@ impl Board {
 
         for i in 0..6 {
             if self.field[i + enemy_index] > 0 {
-                return true;
+                return true; //enemy field not empty
             }
         }
         if (self.field[start] + start as u8)
@@ -71,10 +96,24 @@ impl Board {
                 _ => 0,
             }
         {
-            return true;
+            return true; //turn into enemy field
+        }
+        if self.valid_move_exists() {
+            return false; //valid move exists, but is not executed
+        }
+
+        true
+    }
+
+    fn valid_move_exists(&self) -> bool {
+        for i in 0..6 {
+            if self.field[i + self.current_player * 6] > (6 - i as u8) {
+                return true; //valid move exists
+            }
         }
         false
     }
+
     fn score(&mut self, end: usize) {
         if (self.current_player == 0 && end < 6) || (self.current_player == 1 && end > 5) {
             return;
@@ -119,7 +158,45 @@ impl Board {
             print!("{} | ", self.field[i]);
         }
         println!();
+        if !self.game_running {
+            println!("Game over");
+            return;
+        }
         println!("Next player: {}", self.current_player);
         println!()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::Board;
+
+    #[test]
+    fn valid_move() {
+        let mut b = Board::new();
+        b.field = [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0];
+        assert!(!b.check_move_legal(0));
+        assert!(b.check_move_legal(5));
+        b.turn(5);
+        assert_eq!(b.field[6], 2);
+        b.field = [0, 0, 0, 0, 0, 6, 1, 2, 0, 1, 1, 1];
+        b.current_player = 0;
+        assert!(b.check_move_legal(5));
+        b.turn(5);
+        assert_eq!(b.score[0], 6);
+        b.field = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        b.current_player = 0;
+        assert!(b.check_move_legal(0));
+        b.turn(0);
+    }
+    #[test]
+    fn next_player() {
+        let mut b = Board::new();
+        b.field = [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0];
+        b.set_next_player();
+        assert_eq!(b.current_player, 1);
+        b.set_next_player();
+        assert!(!b.game_running);
+        assert_eq!(b.score[1], 1);
     }
 }

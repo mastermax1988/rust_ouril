@@ -8,7 +8,7 @@ use text_io::read;
 fn main() {
     let mut b = Board::new();
     b.print();
-    while true {
+    loop {
         let line: String = read!("{}\n");
         let nr: usize;
         if let Ok(x) = line.parse() {
